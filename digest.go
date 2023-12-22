@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io/fs"
+	"net/http"
 	"path/filepath"
 )
 
@@ -14,11 +15,18 @@ type DigestFS struct {
 	ReverseMap map[string]string
 }
 
-var AssetsWithDigests *DigestFS
+var assetsWithDigests *DigestFS
+
+func FS() http.FileSystem {
+	if assetsWithDigests == nil {
+		panic("AssetsWithDigests not initialized")
+	}
+	return http.FS(assetsWithDigests)
+}
 
 func CalculateDigests(fsys fs.FS, path string) error {
 	var err error
-	AssetsWithDigests, err = newDigestFS(fsys, path)
+	assetsWithDigests, err = newDigestFS(fsys, path)
 	return err
 }
 
@@ -52,6 +60,10 @@ func newDigestFS(fsys fs.FS, prefix string) (*DigestFS, error) {
 }
 
 func (c *DigestFS) FindFile(name string) string {
+	if c.Map == nil {
+		panic("digestfs not initialized")
+	}
+
 	if newName, ok := c.Map[name]; ok {
 		return newName
 	}

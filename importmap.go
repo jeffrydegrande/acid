@@ -2,10 +2,13 @@ package acid
 
 import (
 	"bytes"
+	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
+	"path/filepath"
+	"strings"
 )
 
 type CDN int
@@ -17,19 +20,92 @@ const (
 var currentCDN CDN
 var importMap *ImportMap
 
+type Package struct {
+	Name string `json:"name,omitempty"`
+	URL  string `json:"url,omitempty"`
+}
+
+type ImportMap struct {
+	Packages  []Package
+	Structure Structure
+}
+
+type Structure struct {
+	Imports map[string]string `json:"imports,omitempty"`
+}
+
+func newImportMap() *ImportMap {
+	return &ImportMap{
+		Packages: []Package{},
+		Structure: Structure{
+			Imports: make(map[string]string),
+		},
+	}
+}
+
 func UseCDN(cdn CDN) {
 	currentCDN = cdn
 }
 
-func Pin(p string, version string) {
+func Pin(name string, version string) {
+	pin(name, buildURL(name, version))
+}
+
+func pin(name, url string) {
 	if importMap == nil {
-		importMap = NewImportMap([]Package{})
+		importMap = newImportMap()
+	}
+	p := Package{
+		Name: name,
+		URL:  url,
+	}
+	importMap.Packages = append(importMap.Packages, p)
+	importMap.Structure.Imports[p.Name] = p.URL
+}
+
+func PinAllFrom(fs *embed.FS) {
+	CalculateDigests(fs, "static")
+
+	files, err := getFiles(fs, "static")
+	if err != nil {
+		panic(err)
 	}
 
-	importMap.Packages = append(importMap.Packages, Package{
-		Name: p,
-		URL:  buildURL(p, version),
-	})
+	for _, file := range files {
+		if filepath.Ext(file) != ".js" {
+			continue
+		}
+
+		url := assetsWithDigests.ReverseMap[file]
+		name := strings.TrimSuffix(strings.TrimPrefix(file, "static/javascript/"), ".js")
+		pin(name, fmt.Sprintf("/assets/%s", url))
+	}
+}
+
+func getFiles(fs *embed.FS, path string) (out []string, err error) {
+	if len(path) == 0 {
+		path = "."
+	}
+
+	entries, err := fs.ReadDir(path)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, entry := range entries {
+		fp := filepath.Join(path, entry.Name())
+		if entry.IsDir() {
+			res, err := getFiles(fs, fp)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, res...)
+			continue
+		}
+		out = append(out, fp)
+	}
+
+	return
 }
 
 func buildURL(p string, version string) string {
@@ -41,66 +117,12 @@ func buildURL(p string, version string) string {
 	}
 }
 
-type Package struct {
-	Name string `json:"name,omitempty"`
-	URL  string `json:"url,omitempty"`
-}
-
-type ImportMap struct {
-	Packages  []Package
-	Structure structure
-}
-
-type structure struct {
-	Imports map[string]string `json:"imports,omitempty"`
-}
-
 func RenderImportMap() (template.HTML, error) {
 	if importMap == nil {
 		return "", errors.New("ImportMap hasn't been setup")
 	}
 	return importMap.Render()
 }
-
-func NewImportMap(packages []Package) *ImportMap {
-	im := &ImportMap{
-		Packages: packages,
-		Structure: structure{
-			Imports: make(map[string]string),
-		},
-	}
-
-	// prepare structure for rendering
-	for _, entry := range im.Packages {
-		im.Structure.Imports[entry.Name] = entry.URL
-	}
-
-	return im
-}
-
-// NOTE:  we're depending on behavior in the golang specification here by assuming that
-// init functions in the same package are run in alphabetical order of the module name.
-/*
-func init() {
-	files, err := GetAssets()
-	if err != nil {
-		// panicing here isn't great because we're not in a situation
-		// where we can pass the error up the stack
-		panic(err)
-	}
-
-	for _, file := range files {
-		if filepath.Ext(file) != ".js" {
-			continue
-		}
-
-		modulePath := AssetsWithDigests.ReverseMap[file]
-		moduleName := strings.TrimSuffix(strings.TrimPrefix(file, "static/javascript/"), ".js")
-
-		importMap.Structure.Imports[moduleName] = fmt.Sprintf("/assets/%s", modulePath)
-	}
-}
-*/
 
 func (im *ImportMap) Imports() (template.HTML, error) {
 	b, err := json.MarshalIndent(im.Structure, "", "\t")
@@ -112,7 +134,7 @@ func (im *ImportMap) Imports() (template.HTML, error) {
 
 // Render returns a HTML snippet to use in a template
 func (im *ImportMap) Render() (template.HTML, error) {
-
+	// TODO: handle modulepreload properly
 	t, err := template.New("").Parse(`
 <script type="importmap">
 	{{ .Imports }}
@@ -133,6 +155,5 @@ func (im *ImportMap) Render() (template.HTML, error) {
 	if err != nil {
 		return "", err
 	}
-
-	return template.HTML(buf.String()), nil
+	return template.HTML(buf.Bytes()), nil
 }
