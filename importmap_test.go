@@ -1,32 +1,24 @@
-package acid
+package acid_test
 
 import (
+	"reflect"
 	"testing"
+
+	"github.com/jeffrydegrande/acid"
 )
 
-func TestGetImportMapPackages(t *testing.T) {
+func TestPinning(t *testing.T) {
+	t.Parallel()
+	acid.UseCDN(acid.JsDelivr)
+	acid.Pin("package1", "1.0.0")
+	acid.Pin("package2", "2.0.0")
 
-	// t.Run("when importMap is nil", func(t *testing.T) {
-	// 	importMap = nil
-	// 	expected := []Package{}
-	// 	packages, err := GetImportMapPackages()
-	// 	assert.Equal(t, expected, packages)
-	// 	assert.Error(t, err, "ImportMap hasn't been setup")
-	// })
+	expected := []acid.Package{
+		{"package1", "https://cdn.jsdelivr.net/npm/package1@1.0.0/+esm"},
+		{"package2", "https://cdn.jsdelivr.net/npm/package2@2.0.0/+esm"},
+	}
 
-	// t.Run("when importMap is not nil", func(t *testing.T) {
-	// 	importMap = &ImportMap{
-	// 		Packages: []Package{
-	// 			{Name: "package1", URL: "path1"},
-	// 			{Name: "package2", URL: "path2"},
-	// 		},
-	// 	}
-	// 	expected := []Package{
-	// 		{Name: "package1", URL: "path1"},
-	// 		{Name: "package2", URL: "path2"},
-	// 	}
-	// 	packages, err := GetImportMapPackages()
-	// 	assert.Equal(t, expected, packages)
-	// 	assert.NoError(t, err)
-	// })
+	if p := acid.Packages(); !reflect.DeepEqual(p, expected) {
+		t.Errorf("Expected %v, got %v", expected, p)
+	}
 }

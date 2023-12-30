@@ -21,12 +21,14 @@ func FS() http.FileSystem {
 	if assetsWithDigests == nil {
 		panic("AssetsWithDigests not initialized")
 	}
+
 	return http.FS(assetsWithDigests)
 }
 
 func CalculateDigests(fsys fs.FS, path string) error {
 	var err error
 	assetsWithDigests, err = newDigestFS(fsys, path)
+
 	return err
 }
 
@@ -50,12 +52,13 @@ func newDigestFS(fsys fs.FS, prefix string) (*DigestFS, error) {
 			cfs.Map[newPath] = path
 			cfs.ReverseMap[path] = newPath
 		}
+
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
+
 	return cfs, nil
 }
 
@@ -67,11 +70,14 @@ func (c *DigestFS) FindFile(name string) string {
 	if newName, ok := c.Map[name]; ok {
 		return newName
 	}
+
 	return name
 }
 
 func (c *DigestFS) Open(name string) (fs.File, error) {
-	return c.FS.Open(c.FindFile(name))
+	file, err := c.FS.Open(c.FindFile(name))
+
+	return file, err
 }
 
 func fileDigest(fsys fs.FS, filePath string) (string, error) {
@@ -79,7 +85,9 @@ func fileDigest(fsys fs.FS, filePath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	hash := sha256.Sum256(data)
+
 	return hex.EncodeToString(hash[:]), nil
 }
 
@@ -95,5 +103,6 @@ func hashedFilePath(fsys fs.FS, path string) (string, error) {
 	nameWithoutExt := base[0 : len(base)-len(ext)]
 
 	newName := fmt.Sprintf("%s-%s%s", nameWithoutExt, hash, ext)
+
 	return filepath.Join(dir, newName), nil
 }

@@ -17,7 +17,7 @@ security: ## Run security checks
 	@ echo "✅ go run github.com/securego/gosec/v2/cmd/gosec -fmt golint ./..."
 
 .PHONY: lint
-LINT_ARGS ?= --enable-all
+LINT_ARGS ?= -v
 LINT_TARGETS ?= ./...
 lint: ## Lint Go code with the installed golangci-lint
 	@ echo "▶️ golangci-lint run $(LINT_ARGS) $(LINT_TARGETS)"

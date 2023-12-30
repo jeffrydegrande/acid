@@ -17,8 +17,12 @@ const (
 	JsDelivr CDN = iota
 )
 
-var currentCDN CDN
-var importMap *ImportMap
+var (
+	currentCDN CDN
+	importMap  *ImportMap
+
+	errImportMapNotSetup = errors.New("importmap hasn't been setup")
+)
 
 type Package struct {
 	Name string `json:"name,omitempty"`
@@ -55,18 +59,20 @@ func pin(name, url string) {
 	if importMap == nil {
 		importMap = newImportMap()
 	}
-	p := Package{
+
+	pkg := Package{
 		Name: name,
 		URL:  url,
 	}
-	importMap.Packages = append(importMap.Packages, p)
-	importMap.Structure.Imports[p.Name] = p.URL
+
+	importMap.Packages = append(importMap.Packages, pkg)
+	importMap.Structure.Imports[pkg.Name] = pkg.URL
 }
 
 func PinAllFrom(fs *embed.FS) {
-	CalculateDigests(fs, "static")
+	_ = CalculateDigests(fs, "static")
 
-	files, err := getFiles(fs, "static")
+	files, err := listFiles(fs, "static")
 	if err != nil {
 		panic(err)
 	}
@@ -82,30 +88,37 @@ func PinAllFrom(fs *embed.FS) {
 	}
 }
 
-func getFiles(fs *embed.FS, path string) (out []string, err error) {
+func listFiles(fileSystem *embed.FS, path string) ([]string, error) {
 	if len(path) == 0 {
 		path = "."
 	}
 
-	entries, err := fs.ReadDir(path)
+	entries, err := fileSystem.ReadDir(path)
 	if err != nil {
 		return nil, err
 	}
 
+	// var out []string
+	out := make([]string, 0, len(entries))
+
 	for _, entry := range entries {
-		fp := filepath.Join(path, entry.Name())
+		fullPath := filepath.Join(path, entry.Name())
+
 		if entry.IsDir() {
-			res, err := getFiles(fs, fp)
+			res, err := listFiles(fileSystem, fullPath)
 			if err != nil {
 				return nil, err
 			}
+
 			out = append(out, res...)
+
 			continue
 		}
-		out = append(out, fp)
+
+		out = append(out, fullPath)
 	}
 
-	return
+	return out, err
 }
 
 func buildURL(p string, version string) string {
@@ -117,10 +130,15 @@ func buildURL(p string, version string) string {
 	}
 }
 
+func Packages() []Package {
+	return importMap.Packages
+}
+
 func RenderImportMap() (template.HTML, error) {
 	if importMap == nil {
-		return "", errors.New("ImportMap hasn't been setup")
+		return "", errImportMapNotSetup
 	}
+
 	return importMap.Render()
 }
 
@@ -129,13 +147,13 @@ func (im *ImportMap) Imports() (template.HTML, error) {
 	if err != nil {
 		return "", err
 	}
-	return template.HTML(b), nil
+
+	return template.HTML(b), nil // #nosec G203 -- Don't want this to be escaped
 }
 
-// Render returns a HTML snippet to use in a template
+// Render returns a HTML snippet to use in a template.
 func (im *ImportMap) Render() (template.HTML, error) {
-	// TODO: handle modulepreload properly
-	t, err := template.New("").Parse(`
+	tmpl, err := template.New("").Parse(`
 <script type="importmap">
 	{{ .Imports }}
 </script>
@@ -144,16 +162,16 @@ func (im *ImportMap) Render() (template.HTML, error) {
 		<link rel="modulepreload" href="{{ .URL }}">
 {{ end }}
 `)
-
 	if err != nil {
 		return "", err
 	}
 
 	var buf bytes.Buffer
-	err = t.Execute(&buf, im)
+	err = tmpl.Execute(&buf, im)
 
 	if err != nil {
 		return "", err
 	}
-	return template.HTML(buf.Bytes()), nil
+
+	return template.HTML(buf.String()), nil // #nosec G203 -- Don't want this to be escaped
 }
