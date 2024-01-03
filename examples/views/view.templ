@@ -1,0 +1,48 @@
+package views
+
+import (
+	"github.com/jeffrydegrande/acid"
+)
+
+templ layout(title string) {
+	<html>
+		<head>
+			<meta charset="utf-8"/>
+			<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<meta name="google" content="notranslate"/>
+			<title>{ title }</title>
+			<link rel="stylesheet" href={ acid.CSS("tailwind") }/>
+			<link rel="stylesheet" href={ acid.CSS("main") }/>
+			@ImportMap()
+			<script type="module">
+        import "main"
+      </script>
+		</head>
+		<body>
+			{ children... }
+		</body>
+	</html>
+}
+
+templ Demo(title string) {
+	@layout(title) {
+		<main class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 h-screen bg-white">
+			<h1>{ title }</h1>
+			<p>This is some kidn of a demo</p>
+			<img src={ acid.Image("willy.gif") }/>
+		</main>
+	}
+}
+
+// TODO: Want to make this smoother, but it's what we have now.
+func ImportMap() templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		m, err := acid.RenderImportMap()
+		if err != nil {
+			return err
+		}
+		w.Write([]byte(m))
+		return nil
+	})
+}
