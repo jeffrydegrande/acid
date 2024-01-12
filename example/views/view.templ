@@ -14,7 +14,7 @@ templ layout(title string) {
 			<title>{ title }</title>
 			<link rel="stylesheet" href={ acid.CSS("tailwind") }/>
 			<link rel="stylesheet" href={ acid.CSS("main") }/>
-			@ImportMap()
+			@acid.ImportMap()
 			<script type="module">
         import "main"
       </script>
@@ -33,16 +33,4 @@ templ Demo(title string) {
 			<img src={ acid.Image("willy.gif") }/>
 		</main>
 	}
-}
-
-// TODO: Want to make this smoother, but it's what we have now.
-func ImportMap() templ.Component {
-	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		m, err := acid.RenderImportMap()
-		if err != nil {
-			return err
-		}
-		w.Write([]byte(m))
-		return nil
-	})
 }

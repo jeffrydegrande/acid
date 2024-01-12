@@ -56,7 +56,7 @@ func layout(title string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = ImportMap().Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = acid.ImportMap().Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -152,17 +152,5 @@ func Demo(title string) templ.Component {
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteTo(templ_7745c5c3_W)
 		}
 		return templ_7745c5c3_Err
-	})
-}
-
-// TODO: Want to make this smoother, but it's what we have now.
-func ImportMap() templ.Component {
-	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		m, err := acid.RenderImportMap()
-		if err != nil {
-			return err
-		}
-		w.Write([]byte(m))
-		return nil
 	})
 }
