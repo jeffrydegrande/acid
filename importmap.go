@@ -19,7 +19,7 @@ const (
 
 var (
 	currentCDN CDN
-	importMap  *ImportMap
+	im         *importMap
 
 	errImportMapNotSetup = errors.New("importmap hasn't been setup")
 )
@@ -29,7 +29,7 @@ type Package struct {
 	URL  string `json:"url,omitempty"`
 }
 
-type ImportMap struct {
+type importMap struct {
 	Packages  []Package
 	Structure Structure
 }
@@ -38,8 +38,8 @@ type Structure struct {
 	Imports map[string]string `json:"imports,omitempty"`
 }
 
-func newImportMap() *ImportMap {
-	return &ImportMap{
+func newImportMap() *importMap {
+	return &importMap{
 		Packages: []Package{},
 		Structure: Structure{
 			Imports: make(map[string]string),
@@ -56,8 +56,8 @@ func Pin(name string, version string) {
 }
 
 func pin(name, url string) {
-	if importMap == nil {
-		importMap = newImportMap()
+	if im == nil {
+		im = newImportMap()
 	}
 
 	pkg := Package{
@@ -65,8 +65,8 @@ func pin(name, url string) {
 		URL:  url,
 	}
 
-	importMap.Packages = append(importMap.Packages, pkg)
-	importMap.Structure.Imports[pkg.Name] = pkg.URL
+	im.Packages = append(im.Packages, pkg)
+	im.Structure.Imports[pkg.Name] = pkg.URL
 }
 
 func PinAllFrom(fs *embed.FS) {
@@ -134,19 +134,19 @@ func buildURL(p string, version string) string {
 }
 
 func Packages() []Package {
-	return importMap.Packages
+	return im.Packages
 }
 
-func RenderImportMap() (template.HTML, error) {
-	if importMap == nil {
+func renderImportMap() (template.HTML, error) {
+	if im == nil {
 		return "", errImportMapNotSetup
 	}
 
-	return importMap.Render()
+	return im.Render()
 }
 
-func (im *ImportMap) Imports() (template.HTML, error) {
-	b, err := json.MarshalIndent(im.Structure, "", "\t")
+func (m *importMap) Imports() (template.HTML, error) {
+	b, err := json.MarshalIndent(m.Structure, "", "\t")
 	if err != nil {
 		return "", err
 	}
@@ -155,7 +155,7 @@ func (im *ImportMap) Imports() (template.HTML, error) {
 }
 
 // Render returns a HTML snippet to use in a template.
-func (im *ImportMap) Render() (template.HTML, error) {
+func (m *importMap) Render() (template.HTML, error) {
 	tmpl, err := template.New("").Parse(`
 <script type="importmap">
 	{{ .Imports }}
@@ -170,7 +170,7 @@ func (im *ImportMap) Render() (template.HTML, error) {
 	}
 
 	var buf bytes.Buffer
-	err = tmpl.Execute(&buf, im)
+	err = tmpl.Execute(&buf, m)
 
 	if err != nil {
 		return "", err

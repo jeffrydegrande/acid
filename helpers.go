@@ -1,6 +1,12 @@
 package acid
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+	"io"
+
+	"github.com/a-h/templ"
+)
 
 func CSS(path string) string {
 	fullPath := fmt.Sprintf("static/css/%s.css", path)
@@ -27,4 +33,19 @@ func Image(path string) string {
 	reverseLink := assetsWithDigests.ReverseMap[fullPath]
 
 	return fmt.Sprintf("/assets/%s", reverseLink)
+}
+
+func ImportMap() templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		m, err := renderImportMap()
+		if err != nil {
+			return err
+		}
+
+		_, err = w.Write([]byte(m))
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 }
