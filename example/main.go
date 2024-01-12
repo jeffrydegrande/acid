@@ -8,8 +8,8 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/jeffrydegrande/acid"
-	_ "github.com/jeffrydegrande/acid/examples/assets"
-	"github.com/jeffrydegrande/acid/examples/views"
+	_ "github.com/jeffrydegrande/acid/example/assets"
+	"github.com/jeffrydegrande/acid/example/views"
 	"github.com/labstack/echo/v4"
 )
 
