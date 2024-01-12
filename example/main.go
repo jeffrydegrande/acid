@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	errTemplateNotFound = errors.New("Template not found")
+	errTemplateNotFound = errors.New("template not found")
 )
 
 // TemplRenderer helps setting up an echo renderer. It's not perfect, but it
