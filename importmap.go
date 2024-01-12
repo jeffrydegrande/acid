@@ -70,7 +70,10 @@ func pin(name, url string) {
 }
 
 func PinAllFrom(fs *embed.FS) {
-	_ = CalculateDigests(fs, "static")
+	err = CalculateDigests(fs, "static")
+	if err != nil {
+		panic(err)
+	}
 
 	files, err := listFiles(fs, "static")
 	if err != nil {
